@@ -1,22 +1,73 @@
-from collections import namedtuple
 from time import time
+from struct import pack
 
 class ServerEntry:
+	challenge2 = 0
+	gamedir = ''
+	protocol = 0
+	players = 0
+	maxplayers = 0
+	bots = 0
+	gamemap = ''
+	version = '0'
+	servtype = 'd'
+	password = 0
+	os = 'l'
+	secure = 0
+	lan = 0
+	region = 255
+	product = ''
+	
 	def setInfoString(self, data):
-		infostring = data.translate(None, '\n\r\0')
+		infostring = data.replace('\n', '').replace('\r', '').replace('\0', '')
 		split = infostring.split('\\')
-		self.serverInfo = namedtuple('ServerInfo', split[0::2])._make(split[1::2])
-		self.check = int(self.serverInfo.challenge) == self.challenge
+		logPrint( split )
+		for i in range(0, len(split), 2):
+			try:
+				key = split[i + 1]
+				if( split[i] == 'challenge' ):
+					self.challenge2 = int(key)
+				elif( split[i] == 'gamedir' ):
+					self.gamedir = key
+				elif( split[i] == 'protocol' ):
+					self.protocol = int(key)
+				elif( split[i] == 'players' ):
+					self.players = int(key)
+				elif( split[i] == 'max' ):
+					self.maxplayers = int(key)
+				elif( split[i] == 'bots' ):
+					self.bots = int(key)
+				elif( split[i] == 'map' ):
+					self.gamemap = key
+				elif( split[i] == 'version' ):
+					self.version = key
+				elif( split[i] == 'type' ):
+					self.servtype = key
+				elif( split[i] == 'password' ):
+					self.password = key
+				elif( split[i] == 'os' ):
+					self.os = key
+				elif( split[i] == 'secure' ):
+					self.secure = key
+				elif( split[i] == 'lan' ):
+					self.lan = key
+				elif( split[i] == 'region' ):
+					self.region = key
+				elif( split[i] == 'product' ):
+					self.product = key
+			except IndexError:
+				pass
+		self.check = self.challenge == self.challenge2
 
 	def __init__(self, addr, challenge):
 		# Address
 		self.addr = addr
 		
 		# Shortcuts for generating query
-		self.queryAddr = ""
+		self.queryAddr = b''
 		for i in addr[0].split('.'):
-			self.queryAddr += struct.pack('B', int(i))
-		self.queryAddr += struct.pack('H', addr[1])
+			self.queryAddr += pack('B', int(i))
+		self.queryAddr += pack('H', addr[1])
 		
 		# Random number that server must return 
 		self.challenge = challenge
