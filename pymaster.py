@@ -60,8 +60,6 @@ class PyMaster:
 			logPrint("Unknown message: {0} from {1}:{2}".format(data, addr[0], addr[1]))
 
 	def clientQuery(self, data, addr):
-		logPrint("Client Query: from {0}:{1}".format(addr[0], addr[1]))
-		
 		region = data[1] # UNUSED
 		data = data.strip('1' + region)
 		try:
@@ -92,7 +90,7 @@ class PyMaster:
 					logPrint('Unhandled info string entry: {0}/{1}'.format(split[i], key))
 			except IndexError:
 				pass
-
+		
 		packet = MasterProtocol.queryPacketHeader
 		for i in self.serverList:
 			if(  time() > i.die ):
@@ -108,7 +106,7 @@ class PyMaster:
 			
 			# Use pregenerated address string
 			packet += i.queryAddr
-			logPrint('Append server to answer: {0}:{1}'.format(i.addr[0], i.addr[1]))
+		packet += b'\0\0\0\0\0\0' # Fill last IP:Port with \0
 			
 		self.sock.sendto(packet, addr)
 	
@@ -150,9 +148,9 @@ class PyMaster:
 		logPrint("Status Request: from {0}:{1}".format(addr[0], addr[1]))
 		count = len(self.serverList)
 		
-		packet = b'Server\t\t\tGame\tMap\tPlayers\tVersion\tChallenge\tCheck\n'
+		packet = b'Server\t\t\tGame\tMap\t\tPlayers\tVersion\tChallenge\tCheck\n'
 		for i in self.serverList:
-			line = '{0}:{1}\t{2}\t{3}\t{4}/{5}\t{6}\n'.format(i.addr[0], i.addr[1], 
+			line = '{0}:{1}\t{2}\t{3}\t\t{4}/{5}\t{6}\t{7}\t{8}n'.format(i.addr[0], i.addr[1], 
 													 i.gamedir, i.gamemap, i.players, 
 													 i.maxplayers, i.version, i.challenge, i.check)
 			packet += line.encode('latin_1')
