@@ -21,7 +21,6 @@ class ServerEntry:
 	def setInfoString(self, data):
 		infostring = data.replace('\n', '').replace('\r', '').replace('\0', '')
 		split = infostring.split('\\')
-		logPrint( split )
 		for i in range(0, len(split), 2):
 			try:
 				key = split[i + 1]
@@ -66,8 +65,8 @@ class ServerEntry:
 		# Shortcuts for generating query
 		self.queryAddr = b''
 		for i in addr[0].split('.'):
-			self.queryAddr += pack('B', int(i))
-		self.queryAddr += pack('H', addr[1])
+			self.queryAddr += pack('!B', int(i))
+		self.queryAddr += pack('!H', int(addr[1]))
 		
 		# Random number that server must return 
 		self.challenge = challenge

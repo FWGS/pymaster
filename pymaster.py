@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Basic networking
 import socket
 
@@ -20,10 +21,12 @@ from server_entry import ServerEntry
 # Protocol class
 from protocol import MasterProtocol
 
-UDP_IP = "127.0.0.1"
+UDP_IP = "0.0.0.0"
 UDP_PORT = 27010
 LOG_FILENAME = 'pymaster.log'
-logging.basicConfig( filename = LOG_FILENAME, level = logging.DEBUG )
+logging.getLogger().addHandler(logging.StreamHandler())
+logging.getLogger().addHandler(logging.FileHandler(LOG_FILENAME))
+logging.getLogger().setLevel(logging.DEBUG)
 
 def logPrint( msg ):
 	logging.debug( msg )
@@ -44,53 +47,39 @@ class PyMaster:
 		data = data.decode('latin_1')
 		
 		if( data[0] == MasterProtocol.clientQuery ):
-			logPrint("Client Query: from {0}:{1}".format(addr[0], addr[1]))
-			self.clientQuery(data, addr);
+			self.clientQuery(data, addr)
 		elif( data[0] == MasterProtocol.challengeRequest ):
-			logPrint("Challenge Request: from {0}:{1}".format(addr[0], addr[1]))
-			self.sendChallengeToServer(data, addr);
+			self.sendChallengeToServer(data, addr)
 		elif( data[0] == MasterProtocol.addServer ):
-			logPrint("Add Server: from {0}:{1}".format(addr[0], addr[1]))
-			self.addServerToList(data, addr);
+			self.addServerToList(data, addr)
 		elif( data[0] == MasterProtocol.removeServer ):
-			logPrint("Remove Server: from {0}:{1}".format(addr[0], addr[1]))
-			self.removeServerFromList(data, addr);
+			self.removeServerFromList(data, addr)
 		elif( data[0] == MasterProtocol.statusRequest ):
-			logPrint("Status Request: from {0}:{1}".format(addr[0], addr[1]))
-			self.sendStatus(data, addr);
+			self.sendStatus(data, addr)
 		else:
 			logPrint("Unknown message: {0} from {1}:{2}".format(data, addr[0], addr[1]))
 
 	def clientQuery(self, data, addr):
-		data = data.strip('1\xff')
+		logPrint("Client Query: from {0}:{1}".format(addr[0], addr[1]))
 		
-		region = data[0]
+		region = data[1] # UNUSED
+		data = data.strip('1' + region)
 		try:
-			queryAddr, rawFilter = data.split('\0')
+			query = data.split('\0')
 		except ValueError:
+			logPrint(traceback.format_exc())
 			return
 		
+		queryAddr = query[0] # UNUSED
+		rawFilter = query[1]
+		
+		# Remove first \ character
 		rawFilter = rawFilter.strip('\\')
 		split = rawFilter.split('\\')
 		
-		#nor       = getAttrOrNone(queryFilter, 'nor')
-		#nand      = getAttrOrNone(queryFilter, 'nand')
-		#dedicated = getAttrOrNone(queryFilter, 'dedicated')
-		#gamemap   = getAttrOrNone(queryFilter, 'map')
-		#linux     = getAttrOrNone(queryFilter, 'linux')
-		#empty     = getAttrOrNone(queryFilter, 'empty')
-		#full      = getAttrOrNone(queryFilter, 'full')
-		#proxy     = getAttrOrNone(queryFilter, 'proxy')
-		#noplayers = getAttrOrNone(queryFilter, 'noplayers')
-		#white     = getAttrOrNone(queryFilter, 'white')
-		#name      = getAttrOrNone(queryFilter, 'name')
-		#version   = getAttrOrNone(queryFilter, 'version_match')
-		#gameaddr  = getAttrOrNone(queryFilter, 'gameaddr')
-		#secure    = getAttrOrNone(queryFilter, 'secure')
-		
 		# Use NoneType as undefined
 		gamedir   = None
-		gamemap   = None
+		gamemap   = None # UNUSED: until Xash3D will not support full filter
 		
 		for i in range( 0, len(split), 2 ):
 			try:
@@ -119,16 +108,19 @@ class PyMaster:
 			
 			# Use pregenerated address string
 			packet += i.queryAddr
+			logPrint('Append server to answer: {0}:{1}'.format(i.addr[0], i.addr[1]))
 			
 		self.sock.sendto(packet, addr)
 	
 	def removeServerFromList(self, data, addr):
+		logPrint("Remove Server: from {0}:{1}".format(addr[0], addr[1]))
 		for i in self.serverList:
 			if (i.addr == addr):
 				self.serverList.remove(i)
 	
 	def sendChallengeToServer(self, data, addr):
-		# At first, remove old server data from list
+		logPrint("Challenge Request: from {0}:{1}".format(addr[0], addr[1]))
+		# At first, remove old server- data from list
 		self.removeServerFromList(None, addr)
 		
 		# Generate a 32 bit challenge number
@@ -143,15 +135,19 @@ class PyMaster:
 		self.sock.sendto(packet, addr)
 
 	def addServerToList(self, data, addr):
+		logPrint("Add Server: from {0}:{1}".format(addr[0], addr[1]))
 		# Remove the header. Just for better parsing.
 		serverInfo = data.strip('\x30\x0a\x5c')
 		
 		# Find a server with same address
 		for serverEntry in self.serverList:
 			if( serverEntry.addr == addr ):
-				serverEntry.setInfoString( serverInfo )
+				break
+			
+		serverEntry.setInfoString( serverInfo )
 	
 	def sendStatus( self, data, addr ):
+		logPrint("Status Request: from {0}:{1}".format(addr[0], addr[1]))
 		count = len(self.serverList)
 		
 		packet = b'Server\t\t\tGame\tMap\tPlayers\tVersion\tChallenge\tCheck\n'
@@ -172,7 +168,7 @@ def main( argv = None ):
 		try:
 			masterMain.serverLoop()
 		except Exception:
-			logging.exception()
+			logPrint(traceback.format_exc())
 			pass
 
 if __name__ == "__main__":
