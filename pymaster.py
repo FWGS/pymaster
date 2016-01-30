@@ -34,18 +34,18 @@ def logPrint( msg ):
 class PyMaster:
 	serverList = []
 	sock = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
-	
+
 	def __init__(self):
 		self.sock.bind( (UDP_IP, UDP_PORT) )
 
 		logPrint("Welcome to PyMaster!")
 		logPrint("I ask you again, are you my master?")
 		logPrint("Running on {0}:{1}".format( UDP_IP, UDP_PORT))
-	
+
 	def serverLoop(self):
 		data, addr = self.sock.recvfrom(1024)
 		data = data.decode('latin_1')
-		
+
 		if( data[0] == MasterProtocol.clientQuery ):
 			self.clientQuery(data, addr)
 		elif( data[0] == MasterProtocol.challengeRequest ):
@@ -67,18 +67,18 @@ class PyMaster:
 		except ValueError:
 			logPrint(traceback.format_exc())
 			return
-		
+
 		queryAddr = query[0] # UNUSED
 		rawFilter = query[1]
-		
+
 		# Remove first \ character
 		rawFilter = rawFilter.strip('\\')
 		split = rawFilter.split('\\')
-		
+
 		# Use NoneType as undefined
 		gamedir   = None
 		gamemap   = None # UNUSED: until Xash3D will not support full filter
-		
+
 		for i in range( 0, len(split), 2 ):
 			try:
 				key = split[i + 1]
@@ -90,43 +90,51 @@ class PyMaster:
 					logPrint('Unhandled info string entry: {0}/{1}'.format(split[i], key))
 			except IndexError:
 				pass
-		
+
 		packet = MasterProtocol.queryPacketHeader
 		for i in self.serverList:
 			if(  time() > i.die ):
 				self.serverList.remove(i)
 				continue
-			
+
 			if( not i.check ):
 				continue
-			
+
 			if( gamedir != None ):
 				if( gamedir != i.gamedir):
 					continue
-			
 			# Use pregenerated address string
 			packet += i.queryAddr
 		packet += b'\0\0\0\0\0\0' # Fill last IP:Port with \0
-			
 		self.sock.sendto(packet, addr)
-	
+
 	def removeServerFromList(self, data, addr):
-		logPrint("Remove Server: from {0}:{1}".format(addr[0], addr[1]))
 		for i in self.serverList:
 			if (i.addr == addr):
+				logPrint("Remove Server: from {0}:{1}".format(addr[0], addr[1]))
 				self.serverList.remove(i)
-	
+
 	def sendChallengeToServer(self, data, addr):
 		logPrint("Challenge Request: from {0}:{1}".format(addr[0], addr[1]))
 		# At first, remove old server- data from list
-		self.removeServerFromList(None, addr)
-		
+		#self.removeServerFromList(None, addr)
+
+		count = 0
+		for i in self.serverList:
+			if ( i.addr[0] == addr[0] ):
+				if( i.addr[1] == addr[1] ):
+					self.serverList.remove(i)
+				else:
+					count += 1
+				if( count > 7 ):
+					return
+
 		# Generate a 32 bit challenge number
 		challenge = random.randint(0, 2**32-1)
-		
+
 		# Add server to list
 		self.serverList.append(ServerEntry(addr, challenge))
-		
+
 		# And send him a challenge
 		packet = MasterProtocol.challengePacketHeader
 		packet += pack('I', challenge)
@@ -136,21 +144,21 @@ class PyMaster:
 		logPrint("Add Server: from {0}:{1}".format(addr[0], addr[1]))
 		# Remove the header. Just for better parsing.
 		serverInfo = data.strip('\x30\x0a\x5c')
-		
+
 		# Find a server with same address
 		for serverEntry in self.serverList:
 			if( serverEntry.addr == addr ):
 				break
-			
+
 		serverEntry.setInfoString( serverInfo )
-	
+
 	def sendStatus( self, data, addr ):
 		logPrint("Status Request: from {0}:{1}".format(addr[0], addr[1]))
 		count = len(self.serverList)
-		
+
 		packet = b'Server\t\t\tGame\tMap\t\tPlayers\tVersion\tChallenge\tCheck\n'
 		for i in self.serverList:
-			line = '{0}:{1}\t{2}\t{3}\t\t{4}/{5}\t{6}\t{7}\t{8}n'.format(i.addr[0], i.addr[1], 
+			line = '{0}:{1}\t{2}\t{3}\t{4}/{5}\t{6}\t{7}\t{8}\n'.format(i.addr[0], i.addr[1], 
 													 i.gamedir, i.gamemap, i.players, 
 													 i.maxplayers, i.version, i.challenge, i.check)
 			packet += line.encode('latin_1')
@@ -160,9 +168,9 @@ class PyMaster:
 def main( argv = None ):
 	if argv is None:
 		argv = sys.argv
-	
+
 	masterMain = PyMaster()
-	while True: 
+	while True:
 		try:
 			masterMain.serverLoop()
 		except Exception:
