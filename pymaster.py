@@ -78,6 +78,7 @@ class PyMaster:
 		# Use NoneType as undefined
 		gamedir   = None
 		gamemap   = None # UNUSED: until Xash3D will not support full filter
+		nat = 0
 
 		for i in range( 0, len(split), 2 ):
 			try:
@@ -86,6 +87,8 @@ class PyMaster:
 					gamedir = key
 				elif( split[i] == 'map' ):
 					gamemap = key
+				elif( split[i] == 'nat' ):
+					nat = int(key)
 				else:
 					logPrint('Unhandled info string entry: {0}/{1}'.format(split[i], key))
 			except IndexError:
@@ -100,9 +103,17 @@ class PyMaster:
 			if( not i.check ):
 				continue
 
+			if( nat != i.nat ):
+				continue
+
 			if( gamedir != None ):
-				if( gamedir != i.gamedir):
+				if( gamedir != i.gamedir ):
 					continue
+
+			if( nat ):
+				# Tell server to send info reply
+				self.sock.sendto( '\xff\xff\xff\xffc {0}:{1}'.format( addr[0], addr[1] ), i.addr )
+
 			# Use pregenerated address string
 			packet += i.queryAddr
 		packet += b'\0\0\0\0\0\0' # Fill last IP:Port with \0

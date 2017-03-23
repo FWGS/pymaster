@@ -17,6 +17,7 @@ class ServerEntry:
 	lan = 0
 	region = 255
 	product = ''
+	nat = 0
 	
 	def setInfoString(self, data):
 		infostring = data.replace('\n', '').replace('\r', '').replace('\0', '')
@@ -54,6 +55,8 @@ class ServerEntry:
 					self.region = key
 				elif( split[i] == 'product' ):
 					self.product = key
+				elif( split[i] == 'nat' ):
+					self.nat = int(key)
 			except IndexError:
 				pass
 		self.check = self.challenge == self.challenge2
