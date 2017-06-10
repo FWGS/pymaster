@@ -111,8 +111,10 @@ class PyMaster:
 					continue
 
 			if( nat ):
+				reply = '\xff\xff\xff\xffc {0}:{1}'.format( addr[0], addr[1] )
+				data = reply.encode( 'latin_1' )
 				# Tell server to send info reply
-				self.sock.sendto( '\xff\xff\xff\xffc {0}:{1}'.format( addr[0], addr[1] ), i.addr )
+				self.sock.sendto( data, i.addr )
 
 			# Use pregenerated address string
 			packet += i.queryAddr
