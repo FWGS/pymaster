@@ -90,7 +90,7 @@ class PyMaster:
 				elif( split[i] == 'nat' ):
 					nat = int(key)
 				else:
-					logPrint('Unhandled info string entry: {0}/{1}'.format(split[i], key))
+					logPrint('Unhandled info string entry: {0}/{1}. Infostring was: {2}'.format(split[i], key, split))
 			except IndexError:
 				pass
 
