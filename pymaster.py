@@ -98,7 +98,7 @@ class PyMaster:
 				pass
 
 		if( clver == None ): # Probably an old vulnerable version
-			fakeInfoForOldVersions( gamedir, addr )
+			self.fakeInfoForOldVersions( gamedir, addr )
 			return
 
 		packet = MasterProtocol.queryPacketHeader
@@ -130,19 +130,17 @@ class PyMaster:
 
 	def fakeInfoForOldVersions(self, gamedir, addr):
 		def sendFakeInfo(sock, warnmsg, gamedir, addr):
-			baseReply = "\xff\xff\xff\xffinfo\n\host\\{0}\map\\update\dm\\0\\team\\0\coop\\0\\numcl\\32\maxcl\\32\\gamedir\{1}\\"
-			reply = baseReply.format(warnmsg, gamedir)
-			data = reply.encode( 'latin_1' )
-			sock.sendto(data, addr)
+			baseReply = b"\xff\xff\xff\xffinfo\n\host\\" + warnmsg.encode('utf-8') + b"\map\\update\dm\\0\\team\\0\coop\\0\\numcl\\32\maxcl\\32\\gamedir\\" + gamedir.encode('latin-1') + b"\\"
+			sock.sendto(baseReply, addr)
 
-		sendFakeInfo(sock, "This version is not", gamedir, addr)
-		sendFakeInfo(sock, "supported anymore", gamedir, addr)
-		sendFakeInfo(sock, "Please update Xash3DFWGS", gamedir, addr)
-		sendFakeInfo(sock, "From GooglePlay or GitHub", gamedir, addr)
-		sendFakeInfo(sock, "Эта версия", gamedir, addr)
-		sendFakeInfo(sock, "устарела", gamedir, addr)
-		sendFakeInfo(sock, "Обновите Xash3DFWGS c", gamedir, addr)
-		sendFakeInfo(sock, "GooglePlay или GitHub", gamedir, addr)
+		sendFakeInfo(self.sock, "This version is not", gamedir, addr)
+		sendFakeInfo(self.sock, "supported anymore", gamedir, addr)
+		sendFakeInfo(self.sock, "Please update Xash3DFWGS", gamedir, addr)
+		sendFakeInfo(self.sock, "From GooglePlay or GitHub", gamedir, addr)
+		sendFakeInfo(self.sock, "Эта версия", gamedir, addr)
+		sendFakeInfo(self.sock, "устарела", gamedir, addr)
+		sendFakeInfo(self.sock, "Обновите Xash3DFWGS c", gamedir, addr)
+		sendFakeInfo(self.sock, "GooglePlay или GitHub", gamedir, addr)
 
 	def removeServerFromList(self, data, addr):
 		for i in self.serverList:
