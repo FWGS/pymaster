@@ -129,7 +129,7 @@ class PyMaster:
 		self.sock.sendto(packet, addr)
 
 	def fakeInfoForOldVersions(self, gamedir, addr):
-		 def sendFakeInfo(sock, warnmsg, gamedir, addr):
+		def sendFakeInfo(sock, warnmsg, gamedir, addr):
 			baseReply = "\xff\xff\xff\xffinfo\n\host\\{0}\map\\update\dm\\0\\team\\0\coop\\0\\numcl\\32\maxcl\\32\\gamedir\{1}\\"
 			reply = baseReply.format(warnmsg, gamedir)
 			data = reply.encode( 'latin_1' )
