@@ -98,7 +98,7 @@ class PyMaster:
 				pass
 
 		if( clver == None ): # Probably an old vulnerable version
-			fakeInfoForOldVersions( self, gamedir, addr )
+			fakeInfoForOldVersions( gamedir, addr )
 			return
 
 		packet = MasterProtocol.queryPacketHeader
