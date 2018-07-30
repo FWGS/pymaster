@@ -76,8 +76,7 @@ class PyMaster:
 		split = rawFilter.split('\\')
 
 		# Use NoneType as undefined
-		gamedir = None
-		gamemap = None # UNUSED: until Xash3D will not support full filter
+		gamedir = 'valve' # halflife, by default
 		clver   = None
 		nat = 0
 
@@ -86,8 +85,6 @@ class PyMaster:
 				key = split[i + 1]
 				if( split[i] == 'gamedir' ):
 					gamedir = key
-				elif( split[i] == 'map' ):
-					gamemap = key
 				elif( split[i] == 'nat' ):
 					nat = int(key)
 				elif( split[i] == 'clver' ):
