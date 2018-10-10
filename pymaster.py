@@ -54,8 +54,6 @@ class PyMaster:
 			self.addServerToList(data, addr)
 		elif( data[0] == MasterProtocol.removeServer ):
 			self.removeServerFromList(data, addr)
-		elif( data[0] == MasterProtocol.statusRequest ):
-			self.sendStatus(data, addr)
 		else:
 			logPrint("Unknown message: {0} from {1}:{2}".format(data, addr[0], addr[1]))
 
@@ -182,19 +180,6 @@ class PyMaster:
 				break
 
 		serverEntry.setInfoString( serverInfo )
-
-	def sendStatus( self, data, addr ):
-		logPrint("Status Request: from {0}:{1}".format(addr[0], addr[1]))
-		count = len(self.serverList)
-
-		packet = b'Server\t\t\tGame\tMap\t\tPlayers\tVersion\tChallenge\tCheck\n'
-		for i in self.serverList:
-			line = '{0}:{1}\t{2}\t{3}\t{4}/{5}\t{6}\t{7}\t{8}\n'.format(i.addr[0], i.addr[1], 
-													 i.gamedir, i.gamemap, i.players, 
-													 i.maxplayers, i.version, i.challenge, i.check)
-			packet += line.encode('latin_1')
-		self.sock.sendto(packet, addr)
-
 
 def main( argv = None ):
 	if argv is None:
