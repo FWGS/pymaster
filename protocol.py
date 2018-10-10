@@ -13,8 +13,3 @@ class MasterProtocol:
 	
 	# Master To Server
 	challengePacketHeader = b'\xff\xff\xff\xff\x73\x0a'
-	
-	#Debug
-	statusRequest = 's'
-	
-	
