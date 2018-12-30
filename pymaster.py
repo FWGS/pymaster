@@ -82,7 +82,7 @@ class PyMaster:
 			try:
 				key = split[i + 1]
 				if( split[i] == 'gamedir' ):
-					gamedir = key
+					gamedir = key.lower() # keep gamedir in lowercase
 				elif( split[i] == 'nat' ):
 					nat = int(key)
 				elif( split[i] == 'clver' ):

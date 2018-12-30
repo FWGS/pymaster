@@ -28,7 +28,7 @@ class ServerEntry:
 				if( split[i] == 'challenge' ):
 					self.challenge2 = int(key)
 				elif( split[i] == 'gamedir' ):
-					self.gamedir = key
+					self.gamedir = key.lower() # keep gamedir lowercase
 				elif( split[i] == 'protocol' ):
 					self.protocol = int(key)
 				elif( split[i] == 'players' ):
