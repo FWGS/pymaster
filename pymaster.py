@@ -1,46 +1,31 @@
 #!/usr/bin/env python3
-# Basic networking
 import socket
-
-# Challenge generator
 import random
-
-# System important... things
 import sys
 import traceback
 import logging
-
-# Network packet creating
+import os
+from optparse import OptionParser
 from struct import pack
-
-# Server time control
 from time import time
 
-# ServerEntry class module
 from server_entry import ServerEntry
-# Protocol class
 from protocol import MasterProtocol
 
-UDP_IP = "0.0.0.0"
-UDP_PORT = 27010
 LOG_FILENAME = 'pymaster.log'
-logging.getLogger().addHandler(logging.StreamHandler())
-logging.getLogger().addHandler(logging.FileHandler(LOG_FILENAME))
-logging.getLogger().setLevel(logging.DEBUG)
 
 def logPrint( msg ):
 	logging.debug( msg )
 
 class PyMaster:
-	serverList = []
-	sock = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
-
-	def __init__(self):
-		self.sock.bind( (UDP_IP, UDP_PORT) )
+	def __init__(self, ip, port):
+		self.serverList = []
+		self.sock = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
+		self.sock.bind( (ip, port) )
 
 		logPrint("Welcome to PyMaster!")
 		logPrint("I ask you again, are you my master?")
-		logPrint("Running on {0}:{1}".format( UDP_IP, UDP_PORT))
+		logPrint("Running on %s:%d" % (ip, port))
 
 	def serverLoop(self):
 		data, addr = self.sock.recvfrom(1024)
@@ -181,11 +166,13 @@ class PyMaster:
 
 		serverEntry.setInfoString( serverInfo )
 
-def main( argv = None ):
-	if argv is None:
-		argv = sys.argv
+def spawn_pymaster(verbose, ip, port):
+	if verbose:
+		logging.getLogger().addHandler(logging.StreamHandler())
+	logging.getLogger().addHandler(logging.FileHandler(LOG_FILENAME))
+	logging.getLogger().setLevel(logging.DEBUG)
 
-	masterMain = PyMaster()
+	masterMain = PyMaster(ip, port)
 	while True:
 		try:
 			masterMain.serverLoop()
@@ -194,4 +181,22 @@ def main( argv = None ):
 			pass
 
 if __name__ == "__main__":
-	sys.exit( main( ) )
+	parser = OptionParser()
+	parser.add_option('-i', '--ip', action='store', dest='ip', default='0.0.0.0',
+		help='ip to listen [default: %default]')
+	parser.add_option('-p', '--port', action='store', dest='port', type='int', default=27010,
+		help='port to listen [default: %default]')
+	parser.add_option('-d', '--daemonize', action='store_true', dest='daemonize', default=False,
+		help='run in background, argument is uid [default: %default]')
+	parser.add_option('-q', '--quiet', action='store_false', dest='verbose', default=True,
+		help='don\'t print to stdout [default: %default]')
+
+	(options, args) = parser.parse_args()
+
+	if options.daemonize != 0:
+		from daemon import pidfile, DaemonContext
+
+		with DaemonContext(stdout=sys.stdout, stderr=sys.stderr, working_directory=os.getcwd()) as context:
+			spawn_pymaster(options.verbose, options.ip, options.port)
+	else:
+		sys.exit(spawn_pymaster(options.verbose, options.ip, options.port))
