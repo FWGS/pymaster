@@ -1,0 +1,16 @@
+[Unit]
+Description=Xash3D Master Server
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/default/pymaster
+User=master
+Group=master
+WorkingDirectory=/home/master/pymaster/
+ExecStart=/home/master/pymaster/pymaster.py -i $PYMASTER_IP -p $PYMASTER_PORT
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
