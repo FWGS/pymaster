@@ -34,7 +34,7 @@ class ServerEntry:
 				elif( split[i] == 'players' ):
 					self.players = int(key)
 				elif( split[i] == 'max' ):
-					self.maxplayers = int(key)
+					self.maxplayers = int(key.split('.')[0])
 				elif( split[i] == 'bots' ):
 					self.bots = int(key)
 				elif( split[i] == 'map' ):
