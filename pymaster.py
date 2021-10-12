@@ -13,6 +13,7 @@ from server_entry import ServerEntry
 from protocol import MasterProtocol
 
 LOG_FILENAME = 'pymaster.log'
+MAX_SERVERS_FOR_IP = 14
 
 def logPrint( msg ):
 	logging.debug( msg )
@@ -140,7 +141,7 @@ class PyMaster:
 					self.serverList.remove(i)
 				else:
 					count += 1
-				if( count > 7 ):
+				if( count > MAX_SERVERS_FOR_IP ):
 					return
 
 		# Generate a 32 bit challenge number
