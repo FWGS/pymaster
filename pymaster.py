@@ -30,20 +30,23 @@ class PyMaster:
         log_print("I ask you again, are you my master? @-@")
         log_print("Running on %s:%d" % (ip, port))
 
+
     def server_loop(self):
         data, addr = self.sock.recvfrom(1024)
         data = data.decode("latin_1")
 
-        if data[0] == MasterProtocol.clientQuery:
-            self.client_query(data, addr)
-        elif data[0] == MasterProtocol.challengeRequest:
-            self.send_challenge_to_server(data, addr)
-        elif data[0] == MasterProtocol.addServer:
-            self.add_server_to_list(data, addr)
-        elif data[0] == MasterProtocol.removeServer:
-            self.remove_server_from_list(data, addr)
-        else:
-            log_print("Unknown message: {0} from {1}:{2}".format(data, addr[0], addr[1]))
+        match data[0]:
+            case MasterProtocol.clientQuery:
+                self.client_query(data, addr)
+            case MasterProtocol.challengeRequest:
+                self.send_challenge_to_server(data, addr)
+            case MasterProtocol.addServer:
+                self.add_server_to_list(data, addr)
+            case MasterProtocol.removeServer:
+                self.remove_server_from_list(data, addr)
+            case other:
+                log_print("Unknown message: {0} from {1}:{2}".format(data, addr[0], addr[1]))
+
 
     def client_query(self, data, addr):
         region = data[1]  # UNUSED
@@ -143,14 +146,14 @@ class PyMaster:
             _send_fake_info(self.sock, string, gamedir, addr)
 
 
-    def remove_server_from_list(self, data, addr):
+    def remove_server_from_list(self, addr):
         for server in self.serverList:
             if server.addr == addr:
                 log_print("Remove Server: from {0}:{1}".format(addr[0], addr[1]))
                 self.serverList.remove(server)
 
 
-    def send_challenge_to_server(self, data, addr):
+    def send_challenge_to_server(self, addr):
         log_print("Challenge Request: from {0}:{1}".format(addr[0], addr[1]))
         # At first, remove old server- data from list
         # self.removeServerFromList(None, addr)
@@ -201,7 +204,6 @@ def spawn_pymaster(verbose, ip, port):
             masterMain.server_loop()
         except Exception:
             log_print(traceback.format_exc())
-            pass
 
 
 if __name__ == "__main__":
