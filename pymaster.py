@@ -16,19 +16,15 @@ LOG_FILENAME = "pymaster.log"
 MAX_SERVERS_FOR_IP = 14
 
 
-def log_print(msg):
-    logging.debug(msg)
-
-
 class PyMaster:
     def __init__(self, ip, port):
         self.serverList = []
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((ip, port))
 
-        log_print("Welcome to PyMaster!")
-        log_print("I ask you again, are you my master? @-@")
-        log_print("Running on %s:%d" % (ip, port))
+        logging.debug("Welcome to PyMaster!")
+        logging.debug("I ask you again, are you my master? @-@")
+        logging.debug("Running on %s:%d" % (ip, port))
 
 
     def server_loop(self):
@@ -45,7 +41,7 @@ class PyMaster:
             case MasterProtocol.removeServer:
                 self.remove_server_from_list(data, addr)
             case other:
-                log_print("Unknown message: {0} from {1}:{2}".format(data, addr[0], addr[1]))
+                logging.debug("Unknown message: {0} from {1}:{2}".format(data, addr[0], addr[1]))
 
 
     def client_query(self, data, addr):
@@ -54,7 +50,7 @@ class PyMaster:
         try:
             query = data.split("\0")
         except ValueError:
-            log_print(traceback.format_exc())
+            logging.debug(traceback.format_exc())
             return
 
         queryAddr = query[0]  # UNUSED
@@ -79,7 +75,7 @@ class PyMaster:
                 elif split[i] == "clver":
                     clver = key
                 else:
-                    log_print(
+                    logging.debug(
                         "Unhandled info string entry: {0}/{1}. Infostring was: {2}".format(
                             split[i], key, split
                         )
@@ -149,12 +145,12 @@ class PyMaster:
     def remove_server_from_list(self, addr):
         for server in self.serverList:
             if server.addr == addr:
-                log_print("Remove Server: from {0}:{1}".format(addr[0], addr[1]))
+                logging.debug("Remove Server: from {0}:{1}".format(addr[0], addr[1]))
                 self.serverList.remove(server)
 
 
     def send_challenge_to_server(self, addr):
-        log_print("Challenge Request: from {0}:{1}".format(addr[0], addr[1]))
+        logging.debug("Challenge Request: from {0}:{1}".format(addr[0], addr[1]))
         # At first, remove old server- data from list
         # self.removeServerFromList(None, addr)
 
@@ -180,7 +176,7 @@ class PyMaster:
 
 
     def add_server_to_list(self, data, addr):
-        log_print("Add Server: from {0}:{1}".format(addr[0], addr[1]))
+        logging.debug("Add Server: from {0}:{1}".format(addr[0], addr[1]))
         # Remove the header. Just for better parsing.
         serverInfo = data.strip("\x30\x0a\x5c")
 
@@ -203,7 +199,7 @@ def spawn_pymaster(verbose, ip, port):
         try:
             masterMain.server_loop()
         except Exception:
-            log_print(traceback.format_exc())
+            logging.debug(traceback.format_exc())
 
 
 if __name__ == "__main__":

@@ -26,38 +26,25 @@ class ServerEntry:
         for i in range(0, len(split), 2):
             try:
                 key = split[i + 1]
-                if split[i] == "challenge":
-                    self.challenge2 = int(key)
-                elif split[i] == "gamedir":
-                    self.gamedir = key.lower()  # keep gamedir lowercase
-                elif split[i] == "protocol":
-                    self.protocol = int(key)
-                elif split[i] == "players":
-                    self.players = int(key)
-                elif split[i] == "max":
-                    self.maxplayers = int(key.split(".")[0])
-                elif split[i] == "bots":
-                    self.bots = int(key)
-                elif split[i] == "map":
-                    self.gamemap = key
-                elif split[i] == "version":
-                    self.version = key
-                elif split[i] == "type":
-                    self.servtype = key
-                elif split[i] == "password":
-                    self.password = key
-                elif split[i] == "os":
-                    self.os = key
-                elif split[i] == "secure":
-                    self.secure = key
-                elif split[i] == "lan":
-                    self.lan = key
-                elif split[i] == "region":
-                    self.region = key
-                elif split[i] == "product":
-                    self.product = key
-                elif split[i] == "nat":
-                    self.nat = int(key)
+
+                if split[i] in ["players", "protocol", "bots", "nat"]:
+                    self.i = int(key)
+
+                elif split[i] in ["version", "password", "os", "secure", "lan", "region", "product"]:
+                    self.i = key
+
+                match split[i]:
+                    case "gamedir":
+                        self.gamedir = key.lower()
+                    case "max":
+                        self.maxplayers = int(key.split(".")[0])
+                    case "challenge":
+                        self.challenge2 = int(key)
+                    case "map":
+                        self.gamemap = key
+                    case "type":
+                        self.servtype = key
+
             except IndexError:
                 pass
         self.check = self.challenge == self.challenge2
