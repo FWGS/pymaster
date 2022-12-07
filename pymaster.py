@@ -6,103 +6,157 @@ import traceback
 import logging
 import os
 from optparse import OptionParser
-from struct import pack
+from struct import pack, unpack
 from time import time
+from ipaddress import ip_address, ip_network
 
 from server_entry import ServerEntry
 from protocol import MasterProtocol
+import ipfilter
 
 LOG_FILENAME = 'pymaster.log'
 MAX_SERVERS_FOR_IP = 14
+CHALLENGE_SEND_PERIOD = 10
 
-def logPrint( msg ):
-	logging.debug( msg )
+def log(msg):
+	logging.debug(msg)
+
+class RateLimitItem:
+	def __init__(self, resetAt):
+		self.reset(resetAt)
+
+	def reset(self, resetAt):
+		self.resetAt = resetAt
+		self.logs = self.calls = 0
+
+	def inc(self):
+		self.calls = self.calls + 1
+		self.logs = self.logs + 1
+
+	def shouldReset(self, curtime):
+		return curtime > self.resetAt
+
+class IPRateLimit:
+	def __init__(self, type, period, maxcalls):
+		self.type = type
+		self.period = period
+		self.maxcalls = maxcalls
+		self.maxlogs  = maxcalls + 2
+		self.ips = {}
+
+	def ratelimit(self, ip):
+		curtime = time()
+
+		if ip not in self.ips:
+			self.ips[ip] = RateLimitItem(curtime + self.period)
+		elif self.ips[ip].shouldReset(curtime):
+			self.ips[ip].reset(curtime + self.period)
+
+		self.ips[ip].inc()
+
+		if self.ips[ip].calls > self.maxcalls:
+			if self.ips[ip].logs < self.maxlogs:
+				log('Ratelimited %s %s' % (self.type, ip))
+			return True
+
+		return False
 
 class PyMaster:
 	def __init__(self, ip, port):
 		self.serverList = []
-		self.sock = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
-		self.sock.bind( (ip, port) )
+		self.serverRL = IPRateLimit('server', 60, 30)
+		self.clientRL = IPRateLimit('client', 60, 120)
+		self.ipfilterRL = IPRateLimit('filterlog', 60, 10)
+		self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		self.sock.bind((ip, port))
 
-		logPrint("Welcome to PyMaster!")
-		logPrint("I ask you again, are you my master?")
-		logPrint("Running on %s:%d" % (ip, port))
+		log("Welcome to PyMaster!")
+		log("I ask you again, are you my master?")
+		log("Running on %s:%d" % (ip, port))
 
 	def serverLoop(self):
 		data, addr = self.sock.recvfrom(1024)
-		data = data.decode('latin_1')
 
-		if( data[0] == MasterProtocol.clientQuery ):
-			self.clientQuery(data, addr)
-		elif( data[0] == MasterProtocol.challengeRequest ):
-			self.sendChallengeToServer(data, addr)
-		elif( data[0] == MasterProtocol.addServer ):
-			self.addServerToList(data, addr)
-		elif( data[0] == MasterProtocol.removeServer ):
-			self.removeServerFromList(data, addr)
-		else:
-			logPrint("Unknown message: {0} from {1}:{2}".format(data, addr[0], addr[1]))
-
-	def clientQuery(self, data, addr):
-		region = data[1] # UNUSED
-		data = data.strip('1' + region)
-		try:
-			query = data.split('\0')
-		except ValueError:
-			logPrint(traceback.format_exc())
+		if ip_address(addr[0]) in ipfilter.ipfilter:
+			if not self.ipfilterRL.ratelimit(addr[0]):
+				log('Filter: %s:%d' % (addr[0], addr[1]))
 			return
 
-		queryAddr = query[0] # UNUSED
-		rawFilter = query[1]
+		if len(data) == 0:
+			return
 
-		# Remove first \ character
-		rawFilter = rawFilter.strip('\\')
-		split = rawFilter.split('\\')
+		# only client stuff
+		if data.startswith(MasterProtocol.clientQuery):
+			if not self.clientRL.ratelimit(addr[0]):
+				self.clientQuery(data, addr)
+			return
 
-		# Use NoneType as undefined
-		gamedir = 'valve' # halflife, by default
-		clver   = None
-		nat = 0
+		# only server stuff
+		if not self.serverRL.ratelimit(addr[0]):
+			if data.startswith(MasterProtocol.challengeRequest):
+				self.sendChallengeToServer(data, addr)
+			elif data.startswith(MasterProtocol.addServer):
+				self.addServerToList(data, addr)
+			elif data.startswith(MasterProtocol.removeServer):
+				self.removeServerFromList(data, addr)
+			else:
+				log('Unknown message: %s from %s:%d' % (str(data), addr[0], addr[1]))
 
-		for i in range( 0, len(split), 2 ):
+	def clientQuery(self, data, addr):
+		data = data.decode('latin_1')
+		data = data.strip('1' + data[1])
+		info = data.split('\0')[1].strip('\\')
+		split = info.split('\\')
+
+		protocol = None
+		gamedir  = 'valve'
+		clver    = None
+		nat      = 0
+
+		for i in range(0, len(split), 2):
 			try:
-				key = split[i + 1]
-				if( split[i] == 'gamedir' ):
-					gamedir = key.lower() # keep gamedir in lowercase
-				elif( split[i] == 'nat' ):
-					nat = int(key)
-				elif( split[i] == 'clver' ):
-					clver = key
+				k = split[i]
+				v = split[i + 1]
+				if k == 'gamedir':
+					gamedir = v.lower() # keep gamedir in lowercase
+				elif k == 'nat':
+					nat = int(v)
+				elif k == 'clver':
+					clver = v
+				elif k == 'protocol':
+					protocol = int(v)
+				# somebody is playing :)
+				elif k == 'thisismypcid' or k == 'heydevelopersifyoureadthis':
+					self.fakeInfoForOldVersions(gamedir, addr)
+					return
 				else:
-					logPrint('Unhandled info string entry: {0}/{1}. Infostring was: {2}'.format(split[i], key, split))
+					log('Client Query: %s:%d, invalid infostring=%s' % (addr[0], addr[1], rawFilter))
 			except IndexError:
 				pass
 
 		if( clver == None ): # Probably an old vulnerable version
-			self.fakeInfoForOldVersions( gamedir, addr )
+			self.fakeInfoForOldVersions(gamedir, addr)
 			return
 
 		packet = MasterProtocol.queryPacketHeader
 		for i in self.serverList:
-			if(  time() > i.die ):
+			if time() > i.die:
 				self.serverList.remove(i)
 				continue
 
-			if( not i.check ):
+			if not i.check:
 				continue
 
-			if( nat != i.nat ):
+			if nat != i.nat or gamedir != i.gamedir:
 				continue
 
-			if( gamedir != None ):
-				if( gamedir != i.gamedir ):
-					continue
+			if protocol != None and protocol != i.protocol:
+				continue
 
-			if( nat ):
-				reply = '\xff\xff\xff\xffc {0}:{1}'.format( addr[0], addr[1] )
-				data = reply.encode( 'latin_1' )
+			if nat:
 				# Tell server to send info reply
-				self.sock.sendto( data, i.addr )
+				data = ('\xff\xff\xff\xffc %s:%d' % (addr[0], addr[1])).encode('latin_1')
+				self.sock.sendto(data, i.addr)
 
 			# Use pregenerated address string
 			packet += i.queryAddr
@@ -124,53 +178,65 @@ class PyMaster:
 		sendFakeInfo(self.sock, "GooglePlay или GitHub", gamedir, addr)
 
 	def removeServerFromList(self, data, addr):
-		for i in self.serverList:
-			if (i.addr == addr):
-				logPrint("Remove Server: from {0}:{1}".format(addr[0], addr[1]))
-				self.serverList.remove(i)
+		pass
 
 	def sendChallengeToServer(self, data, addr):
-		logPrint("Challenge Request: from {0}:{1}".format(addr[0], addr[1]))
-		# At first, remove old server- data from list
-		#self.removeServerFromList(None, addr)
-
 		count = 0
+		s = None
 		for i in self.serverList:
-			if ( i.addr[0] == addr[0] ):
-				if( i.addr[1] == addr[1] ):
-					self.serverList.remove(i)
-				else:
-					count += 1
-				if( count > MAX_SERVERS_FOR_IP ):
+			if addr[0] != i.addr[0]:
+				continue
+			if addr[1] == i.addr[1]:
+				s = i
+				break
+			else:
+				count += 1
+				if count > MAX_SERVERS_FOR_IP:
 					return
 
-		# Generate a 32 bit challenge number
-		challenge = random.randint(0, 2**32-1)
+		challenge2 = None
+		if len(data) == 6:
+			# little endian challenge
+			challenge2 = unpack('<I', data[2:])[0]
 
-		# Add server to list
-		self.serverList.append(ServerEntry(addr, challenge))
+		if not s:
+			challenge = random.randint(0, 2**32-1) & 0xffffffff #hash(addr[0]) + hash(addr[1]) + hash(time())
+			s = ServerEntry(addr, challenge)
+			self.serverList.append(s)
+		elif s.sentChallengeAt + 5 > time():
+			return
 
-		# And send him a challenge
 		packet = MasterProtocol.challengePacketHeader
-		packet += pack('I', challenge)
+		packet += pack('I', s.challenge)
+
+		# send server-to-master challenge back
+		if challenge2 is not None:
+			packet += pack('I', challenge2)
+
 		self.sock.sendto(packet, addr)
 
 	def addServerToList(self, data, addr):
-		logPrint("Add Server: from {0}:{1}".format(addr[0], addr[1]))
 		# Remove the header. Just for better parsing.
-		serverInfo = data.strip('\x30\x0a\x5c')
+		info = data.strip(b'\x30\x0a\x5c').decode('latin_1')
 
 		# Find a server with same address
-		for serverEntry in self.serverList:
-			if( serverEntry.addr == addr ):
+		s = None
+		for s in self.serverList:
+			if s.addr == addr:
 				break
+		if not s:
+			log('Server skipped challenge request: %s:%d' % (addr[0], addr[1]))
+			return
 
-		serverEntry.setInfoString( serverInfo )
+		if s.setInfoString( info ):
+			log('Add server: %s:%d, game=%s/%s, protocol=%d, players=%d/%d/%d, version=%s' % (addr[0], addr[1], s.gamemap, s.gamedir, s.protocol, s.players, s.bots, s.maxplayers, s.version))
+		else:
+			log('Failed challenge from %s:%d: %d must be %d' % (addr[0], addr[1], s.challenge, s.challenge2))
 
 def spawn_pymaster(verbose, ip, port):
 	if verbose:
 		logging.getLogger().addHandler(logging.StreamHandler())
-	logging.getLogger().addHandler(logging.FileHandler(LOG_FILENAME))
+#	logging.getLogger().addHandler(logging.FileHandler(LOG_FILENAME))
 	logging.getLogger().setLevel(logging.DEBUG)
 
 	masterMain = PyMaster(ip, port)
@@ -178,7 +244,7 @@ def spawn_pymaster(verbose, ip, port):
 		try:
 			masterMain.serverLoop()
 		except Exception:
-			logPrint(traceback.format_exc())
+			log(traceback.format_exc())
 			pass
 
 if __name__ == "__main__":
