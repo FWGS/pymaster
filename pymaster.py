@@ -67,7 +67,10 @@ class PyMaster:
 		self.serverRL = IPRateLimit('server', 60, 30)
 		self.clientRL = IPRateLimit('client', 60, 120)
 		self.ipfilterRL = IPRateLimit('filterlog', 60, 10)
-		self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		if ':' in ip:
+			self.sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+		else:
+			self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		self.sock.bind((ip, port))
 
 		log("Welcome to PyMaster!")
