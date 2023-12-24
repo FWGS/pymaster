@@ -130,7 +130,7 @@ class PyMaster:
 					self.fakeInfoForOldVersions(gamedir, addr)
 					return
 				else:
-					log('Client Query: %s:%d, invalid infostring=%s' % (addr[0], addr[1], data))
+					log('Client Query: %s:%d, invalid infostring=%s in %s' % (addr[0], addr[1], k, data))
 			except IndexError:
 				pass
 
