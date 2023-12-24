@@ -108,6 +108,7 @@ class PyMaster:
 		info = data.split('\0')[1].strip('\\')
 		split = info.split('\\')
 
+		key      = None
 		protocol = None
 		gamedir  = 'valve'
 		clver    = None
@@ -125,6 +126,8 @@ class PyMaster:
 					clver = v
 				elif k == 'protocol':
 					protocol = int(v)
+				elif k == 'key': # defined but not implemented yet
+					key = v
 				# somebody is playing :)
 				elif k == 'thisismypcid' or k == 'heydevelopersifyoureadthis':
 					self.fakeInfoForOldVersions(gamedir, addr)
