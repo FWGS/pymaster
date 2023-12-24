@@ -9,8 +9,9 @@ User=master
 Group=master
 WorkingDirectory=/home/master/pymaster/
 ExecStart=/home/master/pymaster/pymaster.py -i $PYMASTER_IP -p $PYMASTER_PORT
+StandardOutput=file:/home/master/pymaster-debug.log
+StandardError=file:/home/master/pymaster-error.log
 Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
-
