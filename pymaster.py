@@ -12,7 +12,7 @@ from ipaddress import ip_address, ip_network
 
 from server_entry import ServerEntry
 from protocol import MasterProtocol
-import ipfilter
+# import ipfilter
 
 LOG_FILENAME = 'pymaster.log'
 MAX_SERVERS_FOR_IP = 14
@@ -66,8 +66,12 @@ class PyMaster:
 		self.serverList = []
 		self.serverRL = IPRateLimit('server', 60, 30)
 		self.clientRL = IPRateLimit('client', 60, 120)
+		# self.ipfilterRL = IPRateLimit('filterlog', 60, 10)
 		self.ipfilterRL = IPRateLimit('filterlog', 60, 10)
-		self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		if ':' in ip:
+			self.sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+		else:
+			self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		self.sock.bind((ip, port))
 
 		log("Welcome to PyMaster!")
@@ -77,10 +81,10 @@ class PyMaster:
 	def serverLoop(self):
 		data, addr = self.sock.recvfrom(1024)
 
-		if ip_address(addr[0]) in ipfilter.ipfilter:
-			if not self.ipfilterRL.ratelimit(addr[0]):
-				log('Filter: %s:%d' % (addr[0], addr[1]))
-			return
+		# if ip_address(addr[0]) in ipfilter.ipfilter:
+		# 	if not self.ipfilterRL.ratelimit(addr[0]):
+		# 		log('Filter: %s:%d' % (addr[0], addr[1]))
+		# 	return
 
 		if len(data) == 0:
 			return
