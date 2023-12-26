@@ -126,8 +126,8 @@ class PyMaster:
 					clver = v
 				elif k == 'protocol':
 					protocol = int(v)
-				elif k == 'key': # defined but not implemented yet
-					key = v
+				elif k == 'key':
+					key = int(v, 16)
 				# somebody is playing :)
 				elif k == 'thisismypcid' or k == 'heydevelopersifyoureadthis':
 					self.fakeInfoForOldVersions(gamedir, addr)
@@ -142,6 +142,10 @@ class PyMaster:
 			return
 
 		packet = MasterProtocol.queryPacketHeader
+
+		if key != None:
+			packet += b'\x7F' + pack('<I', key) + b'\x00'
+
 		for i in self.serverList:
 			if time() > i.die:
 				self.serverList.remove(i)
@@ -160,9 +164,6 @@ class PyMaster:
 				# Tell server to send info reply
 				data = ('\xff\xff\xff\xffc %s:%d' % (addr[0], addr[1])).encode('latin_1')
 				self.sock.sendto(data, i.addr)
-
-			if key:
-				packet += b"\x7f" + key.encode('latin_1')
 
 			# Use pregenerated address string
 			packet += i.queryAddr
