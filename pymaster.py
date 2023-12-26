@@ -162,7 +162,7 @@ class PyMaster:
 				self.sock.sendto(data, i.addr)
 
 			if key:
-				packet = b"\x7f" + key.encode('latin_1')
+				packet += b"\x7f" + key.encode('latin_1')
 
 			# Use pregenerated address string
 			packet += i.queryAddr
