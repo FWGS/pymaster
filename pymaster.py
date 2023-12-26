@@ -161,6 +161,9 @@ class PyMaster:
 				data = ('\xff\xff\xff\xffc %s:%d' % (addr[0], addr[1])).encode('latin_1')
 				self.sock.sendto(data, i.addr)
 
+			if key:
+				packet = b"\x7f" + key.encode('latin_1')
+
 			# Use pregenerated address string
 			packet += i.queryAddr
 		packet += b'\0\0\0\0\0\0' # Fill last IP:Port with \0
